@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>growbox.cloud</title>
+
+    <link href="/libs/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="./libs/fontawesome-free-5.15.1-web/css/all.css" rel="stylesheet">
+
+    <script src="/libs/lightweight-charts.standalone.production.js"></script>
+    <script src="/libs/socket.io.js"></script>
+    <script src="/libs/jquery.js"></script>
+    <script src="/gun/gun.js"></script>
+    <script src="/gun/sea.js"></script>
+    <style>
+        /*body {*/
+        /*    padding-top: 5rem;*/
+        /*}*/
+
+        html,
+        body {
+            overflow-x: hidden;
+            /* Prevent scroll on narrow devices */
+        }
+
+        body {
+            padding-top: 56px;
+        }
+
+        @media (max-width: 991.98px) {
+            .offcanvas-collapse {
+                position: fixed;
+                top: 56px;
+                /* Height of navbar */
+                bottom: 0;
+                left: 100%;
+                width: 100%;
+                padding-right: 1rem;
+                padding-left: 1rem;
+                overflow-y: auto;
+                visibility: hidden;
+                background-color: #343a40;
+                transition: visibility .3s ease-in-out, -webkit-transform .3s ease-in-out;
+                transition: transform .3s ease-in-out, visibility .3s ease-in-out;
+                transition: transform .3s ease-in-out, visibility .3s ease-in-out, -webkit-transform .3s ease-in-out;
+            }
+            .offcanvas-collapse.open {
+                visibility: visible;
+                -webkit-transform: translateX(-100%);
+                transform: translateX(-100%);
+            }
+        }
+
+        .nav-underline .nav-link {
+            padding-top: .75rem;
+            padding-bottom: .75rem;
+            font-size: .875rem;
+            color: #6c757d;
+        }
+
+        .nav-underline .nav-link:hover {
+            color: #007bff;
+        }
+
+        .nav-underline .active {
+            font-weight: 500;
+            color: #343a40;
+        }
+
+        .text-white-50 {
+            color: rgba(255, 255, 255, .5);
+        }
+
+        .bg-purple {
+            background-color: #6f42c1;
+        }
+
+        .lh-100 {
+            line-height: 1;
+        }
+
+        .lh-125 {
+            line-height: 1.25;
+        }
+
+        .lh-150 {
+            line-height: 1.5;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark">
+        <a class="navbar-brand mr-auto mr-lg-0" href="/">GrowBox.Cloud</a>
+        <button class="navbar-toggler p-0 border-0" type="button" data-toggle="offcanvas">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+        <div class="navbar-collapse offcanvas-collapse" id="navbarsExampleDefault">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="/">Dashboard <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/?page=scheduler">Scheduler</a>
+                </li>
+                <!--<li class="nav-item">-->
+                <!--    <a class="nav-link" href="#">Profile</a>-->
+                <!--</li>-->
+                <!--<li class="nav-item">-->
+                <!--    <a class="nav-link" href="#">Switch account</a>-->
+                <!--</li>-->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Settings</a>
+                    <div class="dropdown-menu" aria-labelledby="dropdown01">
+                        <a class="dropdown-item" href="?page=sensors">Sensors</a>
+                        <a class="dropdown-item" href="?page=boxs">Boxs</a>
+                    </div>
+                </li>
+            </ul>
+            <!--<form class="form-inline my-2 my-lg-0">-->
+            <!--    <input class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search">-->
+            <!--    <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>-->
+            <!--</form>-->
+        </div>
+    </nav>
+
+
+    <!--<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+        <a class="navbar-brand" href="./home">growbox.cloud</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="navbar-collapse collapse justify-content-between" id="navbarNavDropdown">
+            <ul class="navbar-nav mr-auto" id="navbar-nav-left">
+
+            </ul>
+            <ul class="navbar-nav" id="navbar-nav-right">
+
+            </ul>
+        </div>
+    </nav>-->
+
+    <div role="main" class="container-fluid" id="main-container">
+
+
+    </div>
+
+    <div style="text-align: center;" id="app-footer">
+        <!--<hr/>-->
+        <!--<a href="./">© growbox.cloud</a> | <a href="./gun/examples/stats.html">GUN-STATS</a>-->
+    </div>
+
+
+    <script src="/libs/bootstrap/js/bootstrap.bundle.js"></script>
+
+
+    <script data-main="/client.setup.js" src="/libs/require.js"></script>
+
+</body>
+
+</html>
