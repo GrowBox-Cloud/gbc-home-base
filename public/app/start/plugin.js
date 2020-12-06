@@ -140,7 +140,7 @@ define(function(require, exports, module) {
                         //     console.log("socket.io connection");
                         // });
                         app.Gun = Gun;
-                        
+
                         app.gun = Gun({
                             peers: [],
                             file: 'radata',
@@ -152,12 +152,13 @@ define(function(require, exports, module) {
                             imports.app.user = app.gun.user();
 
                             imports.app.user.auth(parameters.pair, function(ack) {
-                                
+
                                 if (ack.err == "User cannot be found!") {
                                     // app.user.create(parameters.pair, function(ack) {
                                     //     console.log(ack)
                                     // })
-                                }else{
+                                }
+                                else {
                                     console.log("user_ready")
                                     app.emit("user_ready")
                                 }
@@ -182,24 +183,66 @@ define(function(require, exports, module) {
                         app.io = require("socket.io")();
 
                         app.Gun = require("gun");
-                        app.gun = app.Gun(['https://' + window.location.host + '/gun']);
-                        
+                        imports.app.gun = app.Gun(['https://' + window.location.host + '/gun']);
+
                         app.on("settings", function(parameters) {
 
                             imports.app.user = app.gun.user();
 
                             imports.app.user.auth(parameters.pair, function(ack) {
-                                
+
                                 if (ack.err == "User cannot be found!") {
                                     // app.user.create(parameters.pair, function(ack) {
                                     //     console.log(ack)
                                     // })
-                                }else{
+                                }
+                                else {
                                     console.log("user_ready")
                                     app.emit("user_ready")
                                 }
                             })
                         });
+                    }
+
+                    app.gun.listSet = function(listSet, callback) {
+                        var ended = false;
+                        var count = 0;
+                        var list = [];
+                        listSet.once(function(a, b) {
+                            if (!a)
+                                a = {};
+
+                            for (var i in a) {
+                                if (i.indexOf("_") == 0) continue;
+                                count += 1;
+                            }
+                            if (count == 0) {
+                                return callback(null, listArrToObj(list), listSet);
+                            }
+
+                            listSet.map(function(item) {
+                                return !!item ? item : null;
+                            }).once(function(a, b, c, d) {
+                                if (a == null) count -= 1;
+                                if (b == "#") count -= 1;
+                                if (a && b != "#") list.push({ a: a, b: b });
+                                if (count == list.length) {
+                                    if (ended) return;
+                                    ended = true;
+                                    return callback(null, listArrToObj(list), listSet);
+                                }
+                            });
+                        });
+
+                        function listArrToObj(arr) {
+                            var obj = {};
+                            for (var i in arr) {
+                                var item = arr[i].a;
+                                obj[arr[i].b] = item;
+
+                            }
+                            return obj;
+                        }
                     }
 
 

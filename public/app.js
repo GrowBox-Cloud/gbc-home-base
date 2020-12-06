@@ -64,6 +64,26 @@ define(function(require, exports, module) {
 			function appPlugin(options, imports, register) {
 				var app = new events.EventEmitter();
 				app.nw = window.nw;
+
+				app.uuidv4 = function() {
+					return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+						var r = Math.random() * 16 | 0,
+							v = c == 'x' ? r : (r & 0x3 | 0x8);
+						return v.toString(16);
+					});
+				}
+
+
+				app.makeid = function(length) {
+					var result = '';
+					var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+					var charactersLength = characters.length;
+					for (var i = 0; i < length; i++) {
+						result += characters.charAt(Math.floor(Math.random() * charactersLength));
+					}
+					return result;
+				}
+
 				register(null, {
 					app: app,
 					provable: provable,
@@ -76,7 +96,7 @@ define(function(require, exports, module) {
 		architect(config, function(err, app) {
 			if (err) return console.error(err.message);
 			var query = parseQuery(window.location.search);
-			if(!query.page) query.page = "home";
+			if (!query.page) query.page = "home";
 			for (var i in app.services) {
 				if (app.services[i].init) app.services[i].init(app.services.app, "browser", query);
 				app.services.app[i] = app.services[i];

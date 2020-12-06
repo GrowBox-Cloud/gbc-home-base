@@ -6,8 +6,9 @@ if (typeof define !== 'function') {
 define(function(require, exports, module) {
 
     var enabled_plugins = [
-        "scheduler/plugin",
-        // "gun/plugin",
+        "subroutines/plugin",
+        // "dashboard/plugin",
+        "box/plugin",
         "sensor/plugin",
         "ui/plugin",
         "settings/plugin",

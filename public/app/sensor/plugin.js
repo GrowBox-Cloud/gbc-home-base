@@ -7,6 +7,8 @@ define(function(require, exports, module) {
     appPlugin.consumes = ["app"];
     appPlugin.provides = ["sensor"];
 
+    var running_sensors_byID = {};
+    
     function Remap(value, from1, to1, from2, to2) {
         return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
     }
@@ -28,22 +30,23 @@ define(function(require, exports, module) {
         })
     }
 
-    
-    function wheel(WheelPos){//0 - 255
-      WheelPos = 255 - WheelPos;
-      if(WheelPos < 85) {
-      return [255 - WheelPos * 3, 0, WheelPos * 3]
-      }
-      if(WheelPos < 170) {
-        WheelPos -= 85;
-      return [0, WheelPos * 3, 255 - WheelPos * 3];
-      }
-      WheelPos -= 170;
-      return [WheelPos * 3, 255 - WheelPos * 3, 0];
+
+    function wheel(WheelPos) { //0 - 255
+        WheelPos = 255 - WheelPos;
+        if (WheelPos < 85) {
+            return [255 - WheelPos * 3, 0, WheelPos * 3]
+        }
+        if (WheelPos < 170) {
+            WheelPos -= 85;
+            return [0, WheelPos * 3, 255 - WheelPos * 3];
+        }
+        WheelPos -= 170;
+        return [WheelPos * 3, 255 - WheelPos * 3, 0];
     }
-    
+
     function findCanvasPos(obj) {
-        var curleft = 0, curtop = 0;
+        var curleft = 0,
+            curtop = 0;
         if (obj.offsetParent) {
             do {
                 curleft += obj.offsetLeft;
@@ -97,8 +100,27 @@ define(function(require, exports, module) {
 
                             app.on("user_ready", function() {
                                 // lastMID
+                                app.on("send_sensor_data", function(obj,cb) {
+                                    if(obj.path)
+                                    if (running_sensors[obj.path]) {
+                                        if (running_sensors[obj.path].port.isOpen) {
+                                            running_sensors[obj.path].port.write(obj.data + ";");
+                                            if (cb) cb();
+                                        }
+                                    }
+                                    
+                                    if(obj.id)
+                                    if (running_sensors_byID[obj.id]) {
+                                        if (running_sensors_byID[obj.id].port.isOpen) {
+                                            running_sensors_byID[obj.id].port.write(obj.data + ";");
+                                            if (cb) cb();
+                                        }
+                                    }
+                                });
                                 app.on("sensor_data", function(data) {
                                     if (data.ID) {
+                                        app.user.get("my_sensors").get(data.ID).put({ id: data.ID, last_update: (new Date()).getTime() })
+
                                         var TSfi = candleFi(data.TS);
 
                                         var SD = app.user.get("sensor_data_" + data.ID);
@@ -109,6 +131,7 @@ define(function(require, exports, module) {
                                             SD.get(TSfi[i]).get(data.TS).put($gun_d)
                                         }
                                     }
+
                                 })
 
                             })
@@ -225,10 +248,10 @@ define(function(require, exports, module) {
                         else if (app_type == "browser") {
                             var $ = require("$");
                             app.io.on("sensor_data", function(sensor_data) {
-                                                                app.emit("sensor_data",sensor_data);
+                                app.emit("sensor_data", sensor_data);
                             });
-                            if (app_arguments.page == "sensors" && app_arguments.path) {
-                                app.$page_name.text("Sensor " + app_arguments.path);
+                            if (app_arguments.page == "sensors" && (app_arguments.path || app_arguments.id)) {
+                                app.$page_name.text("Sensor " + (app_arguments.path || app_arguments.id));
 
 
 
@@ -248,11 +271,12 @@ define(function(require, exports, module) {
                                 var charSeries = {};
 
                                 app.io.on("sensor_data", function(sensor_data) {
-                                    if (sensor_data.path == app_arguments.path) {
+                                    if (sensor_data.path == app_arguments.path || sensor_data.ID == app_arguments.id) {
                                         var data = sensor_data;
 
                                         for (var j in data) {
                                             (function(j) {
+                                                if (j == "INIT") return;
                                                 if (j == "ID") return;
                                                 if (j.toUpperCase() == "PATH") return;
                                                 if (j == "TS") return;
@@ -312,17 +336,17 @@ define(function(require, exports, module) {
                                                         break;
                                                     case 'W1':
                                                         value_ = 4095 - parseFloat(data[j].join("."))
-                                                        value_ = Remap(value_,0,4095,0,100).toFixed(2);
+                                                        value_ = Remap(value_, 0, 4095, 0, 100).toFixed(2);
                                                         break;
                                                     case 'W2':
                                                         value_ = 4095 - parseFloat(data[j].join("."));
-                                                        if(value_ < 100) return;;
-                                                        value_ = Remap(value_,0,4095,0,100).toFixed(2);
+                                                        if (value_ < 100) return;;
+                                                        value_ = Remap(value_, 0, 4095, 0, 100).toFixed(2);
                                                         break;
                                                     case 'W2A':
                                                         value_ = 4095 - parseFloat(data[j]);
-                                                        if(value_ < 100) return;;
-                                                        value_ = Remap(value_,0,4095,0,100).toFixed(2);
+                                                        if (value_ < 100) return;;
+                                                        value_ = Remap(value_, 0, 4095, 0, 100).toFixed(2);
                                                         break;
                                                     case 'RGB_R':
                                                     case 'R1':
@@ -426,148 +450,148 @@ define(function(require, exports, module) {
                                     }
                                 });
 
-/*
-                                function loadSensors(ports_advailable, ports_enabled) {
-                                    sensorsList.html("");
+                                /*
+                                                                function loadSensors(ports_advailable, ports_enabled) {
+                                                                    sensorsList.html("");
 
-                                    var sensorDataContainer = $("<div class='d-flex justify-content-center flex-wrap' id='sensorData'>");
-                                    sensorDataContainer.appendTo(sensorsList);
+                                                                    var sensorDataContainer = $("<div class='d-flex justify-content-center flex-wrap' id='sensorData'>");
+                                                                    sensorDataContainer.appendTo(sensorsList);
 
-                                    var pictureContainer = $("<div class='d-flex justify-content-center' id='picture'>");
-                                    pictureContainer.appendTo(sensorsList);
+                                                                    var pictureContainer = $("<div class='d-flex justify-content-center' id='picture'>");
+                                                                    pictureContainer.appendTo(sensorsList);
 
-                                    var chartContainer = $("<div class='d-flex justify-content-center' id='chartContainer'>");
-                                    chartContainer.appendTo(sensorsList);
+                                                                    var chartContainer = $("<div class='d-flex justify-content-center' id='chartContainer'>");
+                                                                    chartContainer.appendTo(sensorsList);
 
-                                    var sensoraddContainer = $("<div class='d-flex justify-content-center mt-3' id='sensorAdd'>");
-                                    sensoraddContainer.appendTo(sensorsList);
+                                                                    var sensoraddContainer = $("<div class='d-flex justify-content-center mt-3' id='sensorAdd'>");
+                                                                    sensoraddContainer.appendTo(sensorsList);
 
-                                    // console.log(ports_advailable, ports_enabled)
-                                    var unusedPORTS = [];
-                                    var $ports = {};
+                                                                    // console.log(ports_advailable, ports_enabled)
+                                                                    var unusedPORTS = [];
+                                                                    var $ports = {};
 
-                                    for (var i in ports_advailable) {
-                                        $ports[ports_advailable[i].path] = ports_advailable[i];
+                                                                    for (var i in ports_advailable) {
+                                                                        $ports[ports_advailable[i].path] = ports_advailable[i];
 
-                                        var f = false;
-                                        for (var j in ports_enabled) {
-                                            if (ports_enabled[j] == ports_advailable[i].path) f = true;
-                                        }
-                                        if (f == false)
-                                            unusedPORTS.push(ports_advailable[i].path);
-                                    }
+                                                                        var f = false;
+                                                                        for (var j in ports_enabled) {
+                                                                            if (ports_enabled[j] == ports_advailable[i].path) f = true;
+                                                                        }
+                                                                        if (f == false)
+                                                                            unusedPORTS.push(ports_advailable[i].path);
+                                                                    }
 
-                                    if (unusedPORTS.length) {
-                                        var addForm = $("<form>");
+                                                                    if (unusedPORTS.length) {
+                                                                        var addForm = $("<form>");
 
-                                        var dropdown = $("<select class='form-control'>")
-                                        for (var i in unusedPORTS) {
+                                                                        var dropdown = $("<select class='form-control'>")
+                                                                        for (var i in unusedPORTS) {
 
-                                            $("<option value='" + unusedPORTS[i] + "'>" + unusedPORTS[i] + ($ports[unusedPORTS[i]].manufacturer ? " - " + $ports[unusedPORTS[i]].manufacturer : "") + "</option>").appendTo(dropdown)
+                                                                            $("<option value='" + unusedPORTS[i] + "'>" + unusedPORTS[i] + ($ports[unusedPORTS[i]].manufacturer ? " - " + $ports[unusedPORTS[i]].manufacturer : "") + "</option>").appendTo(dropdown)
 
-                                        }
-                                        dropdown.appendTo(addForm)
+                                                                        }
+                                                                        dropdown.appendTo(addForm)
 
-                                        var addbtn = $("<button class='form-control'>Add</button>");
+                                                                        var addbtn = $("<button class='form-control'>Add</button>");
 
-                                        addbtn.appendTo(addForm)
-                                        addbtn.click(function() {
-                                            // console.log(dropdown.val())
+                                                                        addbtn.appendTo(addForm)
+                                                                        addbtn.click(function() {
+                                                                            // console.log(dropdown.val())
 
-                                            app.io.emit("add_sensor", dropdown.val(), function() {
+                                                                            app.io.emit("add_sensor", dropdown.val(), function() {
 
-                                                app.io.emit("list_sensors", loadSensors)
+                                                                                app.io.emit("list_sensors", loadSensors)
 
-                                            })
-                                        })
+                                                                            })
+                                                                        })
 
-                                        addForm.appendTo(sensoraddContainer)
+                                                                        addForm.appendTo(sensoraddContainer)
 
-                                    }
-
-
-
-                                    function get_sensor_data($ports_enabled, callback) {
-                                        var timeNOW = (new Date()).getTime();
-                                        app.io.emit("get_sensor_data", $ports_enabled, function(data) {
-
-                                            // console.log(data)
-
-                                            for (var j in data) {
-                                                if (j == "id") continue;
-
-                                                if (j == "water1a") data[j] = Remap(data[j], 4094, 0, 1, 0);
-
-
-                                                var s = $(`#sensor-${j}`);
-                                                var V = parseInt(data[j]).toFixed(2);
-                                                if (!s[0]) {
-                                                    $(`<div id="sensor-${j}"class="card border-primary mb-3 mr-3" style="max-width: 20rem;">
-                                                        <div class="card-header">${j}</div>
-                                                        <div class="card-body">
-                                                            <h4 class="card-title">${V}</h4>
-                                                        </div>
-                                                    </div>`).appendTo(sensorDataContainer);
-                                                }
-                                                else {
-                                                    s.find(".card-title").text(V);
-                                                }
-
-                                                if (!chartData[j]) chartData[j] = [];
-                                                chartData[j].push({ time: timeNOW, value: data[j] })
-
-
-                                                if (!charSeries[j]) charSeries[j] = chart.addAreaSeries({
-                                                    // topColor: 'rgba(67, 83, 254, 0.7)',
-                                                    // bottomColor: 'rgba(67, 83, 254, 0.3)',
-                                                    topColor: 'rgba(0,0,0, 0)',
-                                                    bottomColor: 'rgba(0,0,0, 0)',
-                                                    lineColor: 'rgba(' + rndColor() + ', 1)',
-                                                    lineWidth: 2,
-                                                });
-
-                                                charSeries[j].setData(chartData[j]);
-
-                                                if (callback) callback();
-                                            }
-                                        });
-                                    }
-
-                                    function start_get_sensor_data_timer(sensorPort) {
-                                        var runningCheck = false;
-                                        var lastCheck = 0;
-                                        setInterval(function() {
-                                            if (runningCheck) return;
-                                            if (lastCheck > 0 && (new Date()).getTime() - lastCheck < 1000) return;
-
-                                            lastCheck = (new Date()).getTime();
-                                            runningCheck = true;
-
-                                            get_sensor_data(sensorPort, function() {
-                                                runningCheck = false;
-                                            })
-
-                                        }, 1000)
-                                    }
-
-                                    for (var i in ports_enabled) {
-                                        start_get_sensor_data_timer(ports_enabled[i])
-                                    }
-
-                                    app.io.emit("get_camera_image", function(base64picture) {
-                                        // console.log("got base64Img");
-                                        $(`<div class="card border-primary mb-3 mr-3" style="max-width: 20rem;">
-                                                    <div class="card-header">Camera</div>
-                                                    <div class="card-body">
-                                                        <h4 class="card-title"><img style="width: 100%;" src="data:image/png;base64,${base64picture}"/></h4>
-                                                    </div>
-                                                </div>`).appendTo(pictureContainer)
+                                                                    }
 
 
 
-                                    })
-                                }
-*/
+                                                                    function get_sensor_data($ports_enabled, callback) {
+                                                                        var timeNOW = (new Date()).getTime();
+                                                                        app.io.emit("get_sensor_data", $ports_enabled, function(data) {
+
+                                                                            // console.log(data)
+
+                                                                            for (var j in data) {
+                                                                                if (j == "id") continue;
+
+                                                                                if (j == "water1a") data[j] = Remap(data[j], 4094, 0, 1, 0);
+
+
+                                                                                var s = $(`#sensor-${j}`);
+                                                                                var V = parseInt(data[j]).toFixed(2);
+                                                                                if (!s[0]) {
+                                                                                    $(`<div id="sensor-${j}"class="card border-primary mb-3 mr-3" style="max-width: 20rem;">
+                                                                                        <div class="card-header">${j}</div>
+                                                                                        <div class="card-body">
+                                                                                            <h4 class="card-title">${V}</h4>
+                                                                                        </div>
+                                                                                    </div>`).appendTo(sensorDataContainer);
+                                                                                }
+                                                                                else {
+                                                                                    s.find(".card-title").text(V);
+                                                                                }
+
+                                                                                if (!chartData[j]) chartData[j] = [];
+                                                                                chartData[j].push({ time: timeNOW, value: data[j] })
+
+
+                                                                                if (!charSeries[j]) charSeries[j] = chart.addAreaSeries({
+                                                                                    // topColor: 'rgba(67, 83, 254, 0.7)',
+                                                                                    // bottomColor: 'rgba(67, 83, 254, 0.3)',
+                                                                                    topColor: 'rgba(0,0,0, 0)',
+                                                                                    bottomColor: 'rgba(0,0,0, 0)',
+                                                                                    lineColor: 'rgba(' + rndColor() + ', 1)',
+                                                                                    lineWidth: 2,
+                                                                                });
+
+                                                                                charSeries[j].setData(chartData[j]);
+
+                                                                                if (callback) callback();
+                                                                            }
+                                                                        });
+                                                                    }
+
+                                                                    function start_get_sensor_data_timer(sensorPort) {
+                                                                        var runningCheck = false;
+                                                                        var lastCheck = 0;
+                                                                        setInterval(function() {
+                                                                            if (runningCheck) return;
+                                                                            if (lastCheck > 0 && (new Date()).getTime() - lastCheck < 1000) return;
+
+                                                                            lastCheck = (new Date()).getTime();
+                                                                            runningCheck = true;
+
+                                                                            get_sensor_data(sensorPort, function() {
+                                                                                runningCheck = false;
+                                                                            })
+
+                                                                        }, 1000)
+                                                                    }
+
+                                                                    for (var i in ports_enabled) {
+                                                                        start_get_sensor_data_timer(ports_enabled[i])
+                                                                    }
+
+                                                                    app.io.emit("get_camera_image", function(base64picture) {
+                                                                        // console.log("got base64Img");
+                                                                        $(`<div class="card border-primary mb-3 mr-3" style="max-width: 20rem;">
+                                                                                    <div class="card-header">Camera</div>
+                                                                                    <div class="card-body">
+                                                                                        <h4 class="card-title"><img style="width: 100%;" src="data:image/png;base64,${base64picture}"/></h4>
+                                                                                    </div>
+                                                                                </div>`).appendTo(pictureContainer)
+
+
+
+                                                                    })
+                                                                }
+                                */
                                 // app.io.emit("list_sensors", loadSensors)
 
 
@@ -585,22 +609,49 @@ define(function(require, exports, module) {
 
                                 app.$page_name.text("Sensors");
 
-                                var sensorsList = $("<div class='' id='sensor_list' class='text-align:center;'/>");
 
-                                sensorsList.appendTo(app.$head);
+                                $(`
+                                
+                                        <h3>Sensor Connections</h3>
+                                        <table class="table sensor_table">
+                                          <thead>
+                                            <tr>
+                                                <th>Serial Port</th>
+                                                <th>Connect</th>
+                                                <th>Detected ID</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                          </tbody>
+                                        </table>
+                                        <hr/>
+                                        <h3>My Sensors</h3>
+                                        <table class="table user_sensor_table">
+                                          <thead>
+                                            <tr>
+                                              <th scope="col">Sensor ID</th>
+                                              <th scope="col">Box</th>
+                                              <th scope="col">Last Update</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                          </tbody>
+                                        </table>`).appendTo(app.$head);
+
+
+
+                                var sensorsList = $(".sensor_table tbody");
+
+                                var user_sensors_List = $(".user_sensor_table tbody");
 
                                 function sensorList(ports_advailable, ports_list) {
 
-                                    var table = $("<table class='table'>");
+                                    // var table = $("<table class='table'>");
 
                                     var row;
                                     var eid;
 
-                                    row = $("<tr>");
-                                    $("<th>Serial Port</th>").appendTo(row);
-                                    $("<th>Connect</th>").appendTo(row);
-                                    $("<th>ID</th>").appendTo(row);
-                                    row.appendTo(table);
+
                                     for (var i in ports_advailable) {
                                         (function(i) {
                                             eid = ports_advailable[i].path.replaceAll("/", "_") + "_";
@@ -621,7 +672,7 @@ define(function(require, exports, module) {
                                             //ID
                                             $("<td id='" + eid + "ID'></td>").appendTo(row);
 
-                                            row.appendTo(table)
+                                            row.appendTo(sensorsList)
 
                                         })(i)
                                     }
@@ -629,7 +680,7 @@ define(function(require, exports, module) {
                                     for (var i in ports_list) {
                                         (function(i) {
                                             eid = i.replaceAll("/", "_") + "_";
-                                            row = table.find("#" + eid);
+                                            row = sensorsList.find("#" + eid);
                                             var auto_connect;
                                             if (!row[0]) {
                                                 row = $("<tr id='" + i.replaceAll("/", "_") + "'>")
@@ -649,7 +700,7 @@ define(function(require, exports, module) {
                                                 //ID
                                                 $("<td id='" + eid + "ID'></td>").appendTo(row);
 
-                                                row.appendTo(table)
+                                                row.appendTo(sensorsList)
                                             }
 
 
@@ -660,12 +711,40 @@ define(function(require, exports, module) {
                                         })(i)
                                     }
 
-                                    table.appendTo(sensorsList)
+                                    // table.appendTo(sensorsList)
 
 
                                 }
 
                                 app.io.emit("get_sensors", sensorList)
+
+                                app.on("user_ready", function() {
+                                    app.user.get("my_sensors").on(function(my_sensors) {
+                                        for (var i in my_sensors) {
+                                            if (i == "#" || i == "_") continue;
+                                            (function(i) {
+                                                app.user.get("my_sensors").get(i).once(function(sensorData) {
+
+                                                    var row = $("#sensor_" + i);
+
+                                                    if (!row[0]) {
+                                                        row = $(`<tr id="sensor_${i}">
+                                                            <td class="sensor_id"><a href="/?page=sensors&id=${i}">${i}</a></td>
+                                                            <td class="sensor_box">${sensorData.box ? sensorData.box : "" }</td>
+                                                            <td class="sensor_time">${sensorData.last_update}</td>
+                                                        </tr>`);
+
+                                                        row.appendTo(user_sensors_List);
+                                                    }else{
+                                                        row.find(".sensor_time").text(sensorData.last_update);
+                                                    }
+                                                    console.log("my_sensors",i,  sensorData)
+                                                });
+                                            })(i);
+
+                                        }
+                                    })
+                                });
 
 
                             }
@@ -711,7 +790,7 @@ define(function(require, exports, module) {
                     var hours = d.getUTCHours();
                     var minutes = d.getUTCMinutes()
                     var seconds = d.getUTCSeconds();
-                    return String(hours + ":" + minutes + ":" + seconds /*+ "\n " + months + "-" + days + "-" + years*/);
+                    return String(hours + ":" + minutes + ":" + seconds /*+ "\n " + months + "-" + days + "-" + years*/ );
                 },
             },
             rightPriceScale: {
@@ -889,6 +968,13 @@ define(function(require, exports, module) {
                         parsedValues['MID'] = parseFloat(val[1]);
                         parsedValues['TS'] = lastMsgTS;
                         break;
+                    
+                    case 'RGB_R':
+                        if(val.join)
+                            val = val[0];
+                    case 'RGB_A':
+                        if(val.join)
+                            val = val[0];
                     default:
                         for (var j in val) {
                             val[j] = parseFloat(val[j]);
@@ -905,7 +991,10 @@ define(function(require, exports, module) {
             for (var i in parsedValues) {
                 sensorClass.values[i] = parsedValues[i];
             }
-
+            
+            if(parsedValues.ID && !running_sensors_byID[parsedValues.ID])
+                running_sensors_byID[parsedValues.ID] = sensorClass;
+                
             app.io.emit("sensor_data", parsedValues);
             app.emit("sensor_data", parsedValues);
             //console.log(current_values);
